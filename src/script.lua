@@ -2,7 +2,7 @@
 
 
 -- CARSA'S COMMANDS
----@version 2.1.2
+---@version 2.1.4
 ---@authors carsakiller, CrazyFluffyPony, Dargino, CodeLeopard
 ---@source https://github.com/carsakiller/Carsas-CommandsV2
 ---@license MIT License
@@ -17,8 +17,8 @@ local OWNER_STEAM_ID = "0"
 local defaulteditable = true 
 local DEBUG = false
 
-local ScriptVersion = "2.1.2"
-local SaveDataVersion = "2.1.1"
+local ScriptVersion = "2.1.4"
+local SaveDataVersion = "2.1.4"
 
 --[ LIBRARIES ]--
 --#region
@@ -489,7 +489,7 @@ local ABOUT = {
 	{title = "ScriptVersion:", text = ScriptVersion},
 	{title = "SaveDataVersion:", text = SaveDataVersion},
 	{title = "Created By:", text = "Carsa, CrazyFluffyPony, Dargino, Leopard"},
-	{title = "Github:", text = "https://github.com/carsakiller/Carsas-Commands"},
+	{title = "Github:", text = "https://github.com/carsakiller/Carsas-CommandsV2"},
 	{title = "More Info:", text = "For more info, I recommend checking out the github page"},
 	{title = "For Help:", text = "Use '?ccHelp' to get more information on commands"},
 }
@@ -1504,6 +1504,19 @@ local PREFERENCE_DEFAULTS = {
 	},
 	adminAll = {
 		value = false,
+		type = "boolean",
+		func = function()
+
+			if G_preferences.adminAll.value then
+				for _, player in pairs(G_players.players) do
+					G_roles.get("Admin").addMember(player)
+				end
+			end
+
+		end
+	},
+	editableVehicles = {
+		value = true,
 		type = "boolean"
 	}
 }
@@ -3235,16 +3248,8 @@ function onCreate(is_new)
 		G_preferences.keepInventory.value = property.checkbox("Keep inventory on death", "true")
 		G_preferences.removeVehicleOnLeave.value = property.checkbox("Remove player's vehicle on leave", "true")
 		G_preferences.maxVoxels.value = property.slider("Max vehicle voxel size", 0, 10000, 10, 0)
-
-		local adminAll = property.checkbox("Admin all players", "false")
-		local everyoneRole = G_roles.get("Everyone")
-
-		if everyoneRole then
-			everyoneRole.setPermissions(adminAll, everyoneRole.auth)
-			G_preferences.adminAll.value = true
-		else
-			companionError("Everyone role not found, can not admin everyone!")
-		end
+		G_preferences.editableVehicles.value = property.checkbox("Vehicles are editable by default", "true")
+		G_preferences.adminAll.value = property.checkbox("Admin all players", "false")
 	end
 
 	--- List of players indexed by peerID
@@ -3516,6 +3521,11 @@ function onVehicleSpawn(vehicleID, peerID, x, y, z, cost)
 				}
 			)
 		end
+
+		if G_preferences.editableVehicles and not G_preferences.editableVehicles.value then
+			server.setVehicleEditable(vehicleID, false)
+		end
+
 		owner.latest_spawn = vehicleID
 		owner.save()
 	else
@@ -5303,6 +5313,10 @@ COMMANDS = {
 					preference.value = table.concat(args, " ")
 				end
 				edited = true
+			end
+
+			if preference.func then
+				preference.func()
 			end
 
 			if edited then
